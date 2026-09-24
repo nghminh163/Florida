@@ -62,24 +62,33 @@ jobs:
         echo "Building Frida ${{ steps.ver.outputs.V }} for android-arm64"
         git clone --recurse-submodules --branch ${{ steps.ver.outputs.V }} https://github.com/frida/frida || git clone --recurse-submodules https://github.com/frida/frida
         cd frida
+        applied=0; skipped=0
         for path in ../patches/*; do
           name=$(basename $path)
-          echo "=== Apply patches to subprojects/$name ==="
+          echo "=== subprojects/$name ==="
           cd subprojects/$name
           for p in ../../../patches/$name/*.patch; do
             bn=$(basename "$p")
             if git am --3way "$p"; then
-              echo "APPLIED $bn"
+              echo "APPLIED $bn"; applied=$((applied+1))
             else
-              echo "!!! FAILED(3way) $bn -> trying git apply --reject"
               git am --abort 2>/dev/null || true
-              git apply --3way "$p" 2>/dev/null && { git add -A; git -c user.name=x -c user.email=x@x commit -q -m "apply $bn"; echo "APPLIED(apply3way) $bn"; } || echo "SKIPPED $bn"
+              if git apply --3way "$p" 2>/dev/null; then
+                git add -A; git -c user.name=x -c user.email=x@x commit -q -m "apply $bn"; echo "APPLIED(apply3way) $bn"; applied=$((applied+1))
+              else
+                echo "SKIPPED $bn"; skipped=$((skipped+1))
+              fi
             fi
           done
           cd ../..
         done
         cd ..
-        echo "=== patch summary done ==="
+        echo "=== PATCH SUMMARY: applied=$applied skipped=$skipped ==="
+
+    - name: build frida for Android (arm64)
+      shell: bash
+      run: |
+        export ANDROID_NDK_ROOT=${{ steps.setup-ndk.outputs.ndk-path }}
         mkdir build-android-arm64
         cd build-android-arm64
         ../frida/configure --host=android-arm64
