@@ -53,12 +53,12 @@ jobs:
           echo "V=$V" >> $GITHUB_OUTPUT
         fi
 
-    - name: build frida-server (android-arm64) with Florida patches
+    - name: clone frida + apply Florida patches
       shell: bash
       run: |
+        set +e
         git config --global user.name "GitHub Actions"
         git config --global user.email "actions@github.com"
-        export ANDROID_NDK_ROOT=${{ steps.setup-ndk.outputs.ndk-path }}
         echo "Building Frida ${{ steps.ver.outputs.V }} for android-arm64"
         git clone --recurse-submodules --branch ${{ steps.ver.outputs.V }} https://github.com/frida/frida || git clone --recurse-submodules https://github.com/frida/frida
         cd frida
@@ -85,6 +85,11 @@ jobs:
         done
         cd ..
         echo "=== PATCH SUMMARY: applied=$applied skipped=$skipped ==="
+        echo "=== robust scrub: frida_agent_main -> main (port of 0003) ==="
+        grep -rl '"frida_agent_main"' frida/subprojects/frida-core/src frida/subprojects/frida-core/tests 2>/dev/null | while read f; do sed -i 's/"frida_agent_main"/"main"/g' "$f"; echo "sed $f"; done
+        echo "=== install anti-anti-frida.py (0010 execs it) ==="
+        cp scripts/anti-anti-frida.py frida/subprojects/frida-core/src/anti-anti-frida.py
+        echo "installed ($(wc -l < frida/subprojects/frida-core/src/anti-anti-frida.py) lines)"
 
     - name: build frida for Android (arm64)
       shell: bash
