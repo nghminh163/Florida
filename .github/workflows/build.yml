@@ -73,10 +73,11 @@ jobs:
               echo "APPLIED $bn"; applied=$((applied+1))
             else
               git am --abort 2>/dev/null || true
+              git reset --hard HEAD 2>/dev/null >/dev/null; git clean -fdq 2>/dev/null
               if git apply --3way "$p" 2>/dev/null; then
                 git add -A; git -c user.name=x -c user.email=x@x commit -q -m "apply $bn"; echo "APPLIED(apply3way) $bn"; applied=$((applied+1))
               else
-                echo "SKIPPED $bn"; skipped=$((skipped+1))
+                git checkout -- . 2>/dev/null; git reset --hard HEAD 2>/dev/null >/dev/null; git clean -fdq 2>/dev/null; echo "SKIPPED $bn"; skipped=$((skipped+1))
               fi
             fi
           done
